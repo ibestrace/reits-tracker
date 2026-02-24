@@ -4,11 +4,14 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getReitsList } from '@/lib/api';
 import { ReitsItem } from '@/lib/types';
+import { exportToCSV } from '@/lib/export';
+import { useToast } from '@/components/Toast';
 
 export default function RankingPage() {
   const [reitsList, setReitsList] = useState<ReitsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<'changePercent' | 'volume' | 'amount'>('changePercent');
+  const { showToast } = useToast();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -18,12 +21,13 @@ export default function RankingPage() {
         setReitsList(data);
       } catch (error) {
         console.error('Failed to fetch REITs list:', error);
+        showToast('error', '获取数据失败');
       } finally {
         setLoading(false);
       }
     };
     fetchData();
-  }, []);
+  }, [showToast]);
 
   const sortedData = [...reitsList].sort((a, b) => b[sortBy] - a[sortBy]);
   const topGainers = sortedData.filter(r => r.changePercent > 0).slice(0, 10);
@@ -44,10 +48,17 @@ export default function RankingPage() {
           </Link>
         </div>
 
-        <header className="mb-6">
+        <header className="mb-6 flex justify-between items-center">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             涨跌幅排行榜
           </h1>
+          <button
+            onClick={() => exportToCSV(reitsList, `ranking-${new Date().toISOString().split('T')[0]}.csv`)}
+            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+            disabled={loading}
+          >
+            导出CSV
+          </button>
         </header>
 
         {loading ? (

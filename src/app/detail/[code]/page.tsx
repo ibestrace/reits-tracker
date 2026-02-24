@@ -6,6 +6,8 @@ import { getReitsList, getKLineData } from '@/lib/api';
 import { REITS_CODES } from '@/lib/reitsCodes';
 import { ReitsItem, KLineData, TimeRange } from '@/lib/types';
 import Link from 'next/link';
+import { useToast } from '@/components/Toast';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 const PriceChart = dynamic(() => import('@/components/PriceChart'), { ssr: false });
 
@@ -16,9 +18,12 @@ export default function DetailPage({ params }: { params: Promise<{ code: string 
   const [timeRange, setTimeRange] = useState<TimeRange>('1Y');
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(false);
+  const [favorites, setFavorites] = useLocalStorage<string[]>('reits-favorites', []);
+  const { showToast } = useToast();
 
   const reitsInfo = REITS_CODES.find(r => r.code === resolvedParams.code);
   const reitsData = reitsList.find(r => r.code === resolvedParams.code);
+  const isFavorite = favorites.includes(resolvedParams.code);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -28,16 +33,17 @@ export default function DetailPage({ params }: { params: Promise<{ code: string 
         setReitsList(data);
       } catch (error) {
         console.error('Failed to fetch REITs list:', error);
+        showToast('error', '获取数据失败');
       } finally {
         setLoading(false);
       }
     };
     fetchData();
-  }, []);
+  }, [showToast]);
 
   useEffect(() => {
     if (!reitsInfo) return;
-    
+
     const fetchKLine = async () => {
       setChartLoading(true);
       try {
@@ -45,17 +51,28 @@ export default function DetailPage({ params }: { params: Promise<{ code: string 
         setKLineData(data);
       } catch (error) {
         console.error('Failed to fetch K-line data:', error);
+        showToast('error', '获取K线数据失败');
       } finally {
         setChartLoading(false);
       }
     };
     fetchKLine();
-  }, [resolvedParams.code, reitsInfo, timeRange]);
+  }, [resolvedParams.code, reitsInfo, timeRange, showToast]);
 
   const formatNumber = (num: number) => {
     if (num >= 100000000) return (num / 100000000).toFixed(2) + '亿';
     if (num >= 10000) return (num / 10000).toFixed(2) + '万';
     return num.toFixed(2);
+  };
+
+  const toggleFavorite = () => {
+    if (favorites.includes(resolvedParams.code)) {
+      setFavorites(favorites.filter(f => f !== resolvedParams.code));
+      showToast('info', '已从自选中移除');
+    } else {
+      setFavorites([...favorites, resolvedParams.code]);
+      showToast('success', '已添加到自选');
+    }
   };
 
   if (loading) {
@@ -104,10 +121,38 @@ export default function DetailPage({ params }: { params: Promise<{ code: string 
               <div className="text-sm text-gray-500">成交额</div>
               <div className="text-2xl font-bold">{formatNumber(reitsData.amount)}</div>
             </div>
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+              <div className="text-sm text-gray-500">开盘价</div>
+              <div className="text-2xl font-bold">{reitsData.open.toFixed(4)}</div>
+            </div>
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+              <div className="text-sm text-gray-500">最高价</div>
+              <div className="text-2xl font-bold">{reitsData.high.toFixed(4)}</div>
+            </div>
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+              <div className="text-sm text-gray-500">最低价</div>
+              <div className="text-2xl font-bold">{reitsData.low.toFixed(4)}</div>
+            </div>
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+              <div className="text-sm text-gray-500">换手率</div>
+              <div className="text-2xl font-bold">{reitsData.turnover.toFixed(2)}%</div>
+            </div>
           </div>
         )}
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4" style={{ height: '500px' }}>
+          <div className="flex justify-end mb-4">
+            <button
+              onClick={toggleFavorite}
+              className={`px-4 py-2 rounded ${
+                isFavorite
+                  ? 'bg-red-500 text-white hover:bg-red-600'
+                  : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              {isFavorite ? '★ 取消自选' : '☆ 添加自选'}
+            </button>
+          </div>
           <PriceChart
             data={kLineData}
             name={reitsInfo?.name || ''}

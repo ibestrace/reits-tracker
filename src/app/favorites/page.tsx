@@ -6,11 +6,14 @@ import { getReitsList } from '@/lib/api';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { ReitsItem } from '@/lib/types';
 import { REITS_CODES } from '@/lib/reitsCodes';
+import { exportToCSV } from '@/lib/export';
+import { useToast } from '@/components/Toast';
 
 export default function FavoritesPage() {
   const [reitsList, setReitsList] = useState<ReitsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [favorites, setFavorites] = useLocalStorage<string[]>('reits-favorites', []);
+  const { showToast } = useToast();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -20,17 +23,24 @@ export default function FavoritesPage() {
         setReitsList(data);
       } catch (error) {
         console.error('Failed to fetch REITs list:', error);
+        showToast('error', '获取数据失败');
       } finally {
         setLoading(false);
       }
     };
     fetchData();
-  }, []);
+  }, [showToast]);
 
   const favoriteReits = reitsList.filter(r => favorites.includes(r.code));
 
   const removeFavorite = (code: string) => {
     setFavorites(favorites.filter(f => f !== code));
+    showToast('info', '已从自选中移除');
+  };
+
+  const exportFavorites = () => {
+    exportToCSV(favoriteReits, `favorites-${new Date().toISOString().split('T')[0]}.csv`);
+    showToast('success', '导出成功');
   };
 
   const formatNumber = (num: number) => {
@@ -42,10 +52,17 @@ export default function FavoritesPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-6">
+        <div className="mb-6 flex justify-between items-center">
           <Link href="/" className="text-blue-500 hover:underline">
             ← 返回首页
           </Link>
+          <button
+            onClick={exportFavorites}
+            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+            disabled={loading || favoriteReits.length === 0}
+          >
+            导出自选
+          </button>
         </div>
 
         <header className="mb-6">

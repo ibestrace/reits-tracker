@@ -36,13 +36,15 @@ export default function PriceChart({ data, name, code, timeRange, onTimeRangeCha
         type: 'line'
       },
       formatter: (params: any) => {
+        if (!params || !params[0]) return '';
         const data = params[0];
+        const klineData = data.data;
+        if (!klineData) return '';
         return `${data.axisValue}<br/>
-                开盘: ${data.data[1].toFixed(4)}<br/>
-                收盘: ${data.data[2].toFixed(4)}<br/>
-                最高: ${data.data[3].toFixed(4)}<br/>
-                最低: ${data.data[4].toFixed(4)}<br/>
-                成交量: ${(data.data[5] / 10000).toFixed(2)}万`;
+                开盘: ${klineData[1]?.toFixed(4) || 'N/A'}<br/>
+                收盘: ${klineData[2]?.toFixed(4) || 'N/A'}<br/>
+                最低: ${klineData[3]?.toFixed(4) || 'N/A'}<br/>
+                最高: ${klineData[4]?.toFixed(4) || 'N/A'}`;
       }
     },
     grid: {
@@ -68,26 +70,13 @@ export default function PriceChart({ data, name, code, timeRange, onTimeRangeCha
     },
     series: [
       {
-        type: 'line',
-        data: data.map(d => [d.open, d.close, d.low, d.high, d.volume]),
-        smooth: true,
-        symbol: 'none',
-        lineStyle: {
-          width: 2,
-          color: '#3b82f6'
-        },
-        areaStyle: {
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [
-              { offset: 0, color: 'rgba(59, 130, 246, 0.3)' },
-              { offset: 1, color: 'rgba(59, 130, 246, 0.05)' }
-            ]
-          }
+        type: 'candlestick',
+        data: data.map(d => [d.open, d.close, d.low, d.high]),
+        itemStyle: {
+          color: '#ef4444',
+          color0: '#22c55e',
+          borderColor: '#ef4444',
+          borderColor0: '#22c55e'
         }
       }
     ],

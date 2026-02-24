@@ -29,7 +29,7 @@ export default function ReitsTable({ data, selectedCode, onSelect }: ReitsTableP
   };
 
   return (
-    <div className="overflow-auto h-full">
+    <div className="overflow-auto h-full custom-scrollbar">
       <table className="w-full text-sm">
         <thead className="sticky top-0 bg-gray-100 dark:bg-gray-800">
           <tr>
@@ -38,15 +38,15 @@ export default function ReitsTable({ data, selectedCode, onSelect }: ReitsTableP
             <th className="px-2 py-2 text-right font-medium">最新价</th>
             <th className="px-2 py-2 text-right font-medium">涨跌幅</th>
             <th className="px-2 py-2 text-right font-medium hidden md:table-cell">成交量</th>
-            <th className="px-2 py-2 text-right font-medium hidden lg:table-cell">成交额</th>
-            <th className="px-2 py-2 text-right font-medium hidden lg:table-cell">换手率</th>
+            <th className="px-2 py-2 text-right font-medium hidden xl:table-cell">成交额</th>
+            <th className="px-2 py-2 text-right font-medium hidden xl:table-cell">换手率</th>
           </tr>
         </thead>
         <tbody>
           {data.map((item) => (
             <tr
               key={item.code}
-              className={`cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 ${
+              className={`cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition ${
                 selectedCode === item.code ? 'bg-blue-50 dark:bg-blue-900' : ''
               }`}
               onClick={() => onSelect(item.code)}
@@ -62,8 +62,8 @@ export default function ReitsTable({ data, selectedCode, onSelect }: ReitsTableP
                 {item.changePercent >= 0 ? '+' : ''}{item.changePercent.toFixed(2)}%
               </td>
               <td className="px-2 py-2 text-right hidden md:table-cell">{formatNumber(item.volume)}</td>
-              <td className="px-2 py-2 text-right hidden lg:table-cell">{formatAmount(item.amount)}</td>
-              <td className="px-2 py-2 text-right hidden lg:table-cell">{item.turnover.toFixed(2)}%</td>
+              <td className="px-2 py-2 text-right hidden xl:table-cell">{formatAmount(item.amount)}</td>
+              <td className="px-2 py-2 text-right hidden xl:table-cell">{item.turnover.toFixed(2)}%</td>
             </tr>
           ))}
         </tbody>
