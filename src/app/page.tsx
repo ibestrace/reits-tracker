@@ -7,7 +7,7 @@ import { getReitsList, getKLineData, calculateMarketStats } from '@/lib/api';
 import { REITS_CODES } from '@/lib/reitsCodes';
 import { ReitsItem, KLineData, TimeRange, MarketStats } from '@/lib/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { FilterOptions } from '@/lib/utils';
+import { FilterOptions, filterReits, getAssetTypes } from '@/lib/utils';
 import { exportToCSV, exportToExcel } from '@/lib/export';
 import { useToast } from '@/components/Toast';
 import ReitsTable from '@/components/ReitsTable';

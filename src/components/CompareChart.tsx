@@ -35,7 +35,7 @@ export default function CompareChart({ data, timeRange, onTimeRangeChange, loadi
   const series = data.map((item, index) => {
     const color = COLORS[index % COLORS.length];
     const priceMap = new Map(item.klineData.map(k => [k.date, k.close]));
-    
+
     return {
       name: item.name,
       type: 'line' as const,
