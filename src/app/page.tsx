@@ -1,65 +1,188 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import dynamic from 'next/dynamic';
+import Link from 'next/link';
+import { getReitsList, getKLineData, calculateMarketStats } from '@/lib/api';
+import { REITS_CODES } from '@/lib/reitsCodes';
+import { ReitsItem, KLineData, TimeRange, MarketStats } from '@/lib/types';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import ReitsTable from '@/components/ReitsTable';
+import SearchBar from '@/components/SearchBar';
+import StatCard from '@/components/StatCard';
+
+const PriceChart = dynamic(() => import('@/components/PriceChart'), { ssr: false });
 
 export default function Home() {
+  const [reitsList, setReitsList] = useState<ReitsItem[]>([]);
+  const [selectedCode, setSelectedCode] = useState<string>('');
+  const [kLineData, setKLineData] = useState<KLineData[]>([]);
+  const [timeRange, setTimeRange] = useState<TimeRange>('6M');
+  const [searchText, setSearchText] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [chartLoading, setChartLoading] = useState(false);
+  const [stats, setStats] = useState<MarketStats>({
+    totalCount: 0,
+    totalMarketValue: 0,
+    circulatingValue: 0,
+    upCount: 0,
+    downCount: 0,
+    flatCount: 0
+  });
+  const [favorites, setFavorites] = useLocalStorage<string[]>('reits-favorites', []);
+
+  const fetchReitsList = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getReitsList();
+      setReitsList(data);
+      setStats(calculateMarketStats(data));
+      
+      if (data.length > 0 && !selectedCode) {
+        setSelectedCode(data[0].code);
+      }
+    } catch (error) {
+      console.error('Failed to fetch REITs list:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedCode]);
+
+  const fetchKLine = useCallback(async (code: string, range: TimeRange) => {
+    const reits = REITS_CODES.find(r => r.code === code);
+    if (!reits) return;
+    
+    setChartLoading(true);
+    try {
+      const data = await getKLineData(code, reits.exchange, range);
+      setKLineData(data);
+    } catch (error) {
+      console.error('Failed to fetch K-line data:', error);
+    } finally {
+      setChartLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchReitsList();
+  }, []);
+
+  useEffect(() => {
+    if (selectedCode) {
+      fetchKLine(selectedCode, timeRange);
+    }
+  }, [selectedCode, timeRange, fetchKLine]);
+
+  const handleSelectCode = (code: string) => {
+    setSelectedCode(code);
+  };
+
+  const handleTimeRangeChange = (range: TimeRange) => {
+    setTimeRange(range);
+  };
+
+  const toggleFavorite = (code: string) => {
+    if (favorites.includes(code)) {
+      setFavorites(favorites.filter(f => f !== code));
+    } else {
+      setFavorites([...favorites, code]);
+    }
+  };
+
+  const filteredData = useMemo(() => {
+    if (!searchText) return reitsList;
+    const lower = searchText.toLowerCase();
+    return reitsList.filter(
+      r => r.code.toLowerCase().includes(lower) || r.name.toLowerCase().includes(lower)
+    );
+  }, [reitsList, searchText]);
+
+  const selectedReits = useMemo(() => {
+    return REITS_CODES.find(r => r.code === selectedCode);
+  }, [selectedCode]);
+
+  const isFavorite = favorites.includes(selectedCode);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
+      <div className="max-w-7xl mx-auto">
+        <header className="mb-6 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+              中国公募REITs行情跟踪
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              实时跟踪深圳(180xxx) & 上海(508xxx) 交易所上市的公募REITs产品
+            </p>
+          </div>
+          <div className="flex gap-4">
+            <Link 
+              href="/ranking" 
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+              排行榜
+            </Link>
+            <Link 
+              href="/favorites" 
+              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
             >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              自选 {favorites.length > 0 && `(${favorites.length})`}
+            </Link>
+          </div>
+        </header>
+
+        <StatCard stats={stats} />
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" style={{ height: 'calc(100vh - 320px)' }}>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex flex-col">
+            <SearchBar value={searchText} onChange={setSearchText} />
+            <div className="flex-1 min-h-0 overflow-auto">
+              {loading ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-gray-500">加载中...</div>
+                </div>
+              ) : filteredData.length === 0 ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-gray-500">暂无数据</div>
+                </div>
+              ) : (
+                <ReitsTable
+                  data={filteredData}
+                  selectedCode={selectedCode}
+                  onSelect={handleSelectCode}
+                />
+              )}
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+              <PriceChart
+                data={kLineData}
+                name={selectedReits?.name || ''}
+                code={selectedCode}
+                timeRange={timeRange}
+                onTimeRangeChange={handleTimeRangeChange}
+                loading={chartLoading}
+              />
+            </div>
+            {selectedCode && (
+              <div className="flex justify-center mt-2">
+                <button
+                  onClick={() => toggleFavorite(selectedCode)}
+                  className={`px-4 py-2 rounded ${
+                    isFavorite 
+                      ? 'bg-red-500 text-white hover:bg-red-600' 
+                      : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  {isFavorite ? '★ 取消自选' : '☆ 添加自选'}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </div>
     </div>
   );
 }
