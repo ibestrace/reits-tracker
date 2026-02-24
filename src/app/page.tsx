@@ -199,6 +199,12 @@ export default function Home() {
             >
               自选 {favorites.length > 0 && `(${favorites.length})`}
             </Link>
+            <Link
+              href="/compare"
+              className="px-3 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600"
+            >
+              价格对比
+            </Link>
           </div>
         </header>
 
